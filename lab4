@@ -1,0 +1,86 @@
+`timescale 1ns / 1ns
+
+module lab4(
+    input wire sys_clk,        // System Clock, 50MHz
+    input wire sys_rst_n,      // Reset signal. Low level is effective
+    input wire btn,            // Button to switch states
+    input wire rst_btn,        // Reset button to restore color bar
+    output wire hsync,         // Line sync signal
+    output wire vsync,         // Field sync signal
+    output wire [15:0] rgb     // RGB565 color data
+);
+
+    // Parameter and Internal Signal
+    parameter COLOR_BAR = 2'b00, MUST = 2'b01, END = 2'b10;
+    reg [1:0] state = COLOR_BAR;
+    wire [9:0] pix_x, pix_y;
+    wire [15:0] pix_data_color, pix_data_must, pix_data_end;
+    reg [15:0] pix_data;
+
+    // Clock generation (simplified, enable PLL in practice)
+    reg vga_clk;
+    always @(posedge sys_clk or negedge sys_rst_n) begin
+        if (!sys_rst_n) vga_clk <= 0;
+        else vga_clk <= ~vga_clk;  // 25MHz from 50MHz
+    end
+
+    // State machine
+    always @(posedge vga_clk or negedge sys_rst_n) begin
+        if (!sys_rst_n) state <= COLOR_BAR;
+        else begin
+            case (state)
+                COLOR_BAR: if (btn) state <= MUST;
+                MUST: if (btn) state <= END;
+                END: if (rst_btn) state <= COLOR_BAR;
+                default: state <= COLOR_BAR;
+            endcase
+        end
+    end
+
+    // Instantiate modules
+    vga_ctrl vga_ctrl_inst (
+        .vga_clk(vga_clk),
+        .sys_rst_n(sys_rst_n),
+        .pix_data(pix_data),
+        .pix_x(pix_x),
+        .pix_y(pix_y),
+        .hsync(hsync),
+        .vsync(vsync),
+        .rgb(rgb)
+    );
+
+    vga_pic vga_pic_inst (
+        .vga_clk(vga_clk),
+        .sys_rst_n(sys_rst_n),
+        .pix_x(pix_x),
+        .pix_y(pix_y),
+        .pix_data(pix_data_color)
+    );
+
+    must_pic must_pic_inst (
+        .vga_clk(vga_clk),
+        .sys_rst_n(sys_rst_n),
+        .pix_x(pix_x),
+        .pix_y(pix_y),
+        .pix_data(pix_data_must)
+    );
+
+    end_pic end_pic_inst (
+        .vga_clk(vga_clk),
+        .sys_rst_n(sys_rst_n),
+        .pix_x(pix_x),
+        .pix_y(pix_y),
+        .pix_data(pix_data_end)
+    );
+
+    // Select output based on state
+    always @(*) begin
+        case (state)
+            COLOR_BAR: pix_data = pix_data_color;
+            MUST: pix_data = pix_data_must;
+            END: pix_data = pix_data_end;
+            default: pix_data = pix_data_color;
+        endcase
+    end
+
+endmodule
