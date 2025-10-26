@@ -1,0 +1,56 @@
+`timescale 1ns / 1ns
+
+module DevelopmentBoard(
+    input wire clk,           // 50MHz
+    input wire reset,         // Reset signal (mapped to "a")
+    input wire B2,            // Not used (mapped to "s")
+    input wire B3,            // Not used (mapped to "d")
+    input wire B4,            // Not used (mapped to "f")
+    input wire B5,            // Not used (mapped to "g")
+    output wire h_sync,       // Line sync signal
+    output wire v_sync,       // Field sync signal
+    output wire [15:0] rgb,   // RGB565 color data
+    
+    output wire led1,         // LED1 to reset to COLOR_BAR
+    output wire led2,         // LED2 to switch states
+    output wire led3,         // LED3 to indicate END state
+    output wire led4,         // Not used
+    output wire led5          // Not used
+);
+
+    // Internal signals
+    wire sys_rst_n;           // Active-low reset
+    wire btn;                 // Button to switch states (via led2)
+    wire rst_btn;             // Reset button (via led1)
+
+    // Map inputs
+    assign sys_rst_n = ~reset;  // Active-low reset from active-high reset
+    assign btn = led2;          // Use led2 as switch button
+    assign rst_btn = led1;      // Use led1 as reset button
+
+    // Instantiate lab4 module
+    lab4 lab4_inst (
+        .sys_clk(clk),         // 50MHz system clock
+        .sys_rst_n(sys_rst_n), // Active-low reset
+        .btn(btn),             // Button to switch states
+        .rst_btn(rst_btn),     // Reset button
+        .hsync(h_sync),        // Line sync signal
+        .vsync(v_sync),        // Field sync signal
+        .rgb(rgb)              // RGB565 color data
+    );
+
+    // LED status indicators (based on state)
+    // Note: Assuming state is accessible from lab4_inst (modify lab4.v if needed)
+    reg [1:0] state;
+    always @(posedge clk or negedge sys_rst_n) begin
+        if (!sys_rst_n) state <= 2'b00;  // Default to COLOR_BAR
+        else state <= lab4_inst.state;   // Assume state is an output
+    end
+
+    assign led1 = rst_btn;             // LED1 acts as reset input
+    assign led2 = btn;                 // LED2 acts as switch input
+    assign led3 = (state == 2'b10);    // LED3 indicates END state
+    assign led4 = 1'b0;                // Not used
+    assign led5 = 1'b0;                // Not used
+
+endmodule
