@@ -3,19 +3,21 @@
 module lab4(
     input wire sys_clk,        // System Clock, 50MHz
     input wire sys_rst_n,      // Reset signal. Low level is effective
-    input wire btn,            // Button to switch states
-    input wire rst_btn,        // Reset button to restore color bar
+    input wire led1,           // LED1 to reset to COLOR_BAR
+    input wire led2,           // LED2 to switch states
     output wire hsync,         // Line sync signal
     output wire vsync,         // Field sync signal
-    output wire [15:0] rgb     // RGB565 color data
+    output wire [15:0] rgb,    // RGB565 color data
+    output reg [1:0] state     // Output state for LED indication
 );
 
     // Parameter and Internal Signal
     parameter COLOR_BAR = 2'b00, MUST = 2'b01, END = 2'b10;
-    reg [1:0] state = COLOR_BAR;
     wire [9:0] pix_x, pix_y;
     wire [15:0] pix_data_color, pix_data_must, pix_data_end;
     reg [15:0] pix_data;
+    wire btn = led2;              // Map led2 to btn
+    wire rst_btn = led1;          // Map led1 to rst_btn
 
     // Clock generation (simplified, enable PLL in practice)
     reg vga_clk;
